@@ -1,0 +1,50 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-restore-latest
+  namespace: case-study
+spec:
+  template:
+    metadata:
+      labels:
+        app: backend
+        role: db-restore
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: restore
+          image: postgres:16-alpine
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_PASSWORD
+            - name: DB_HOST
+              value: db-primary
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_DB
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_USER
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              LATEST="$(ls -1t /backups/*.dump | head -n 1)"
+              echo "Restoring from: ${LATEST}"
+              pg_restore -h "${DB_HOST}" -U "${DB_USER}" -d "${DB_NAME}" --clean --if-exists --no-owner --no-privileges "${LATEST}"
+              echo "Restore complete"
+          volumeMounts:
+            - name: backup-storage
+              mountPath: /backups
+      volumes:
+        - name: backup-storage
+          persistentVolumeClaim:
+            claimName: db-backup-pvc
