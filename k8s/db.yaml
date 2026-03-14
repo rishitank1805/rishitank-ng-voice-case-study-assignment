@@ -27,15 +27,6 @@ spec:
       labels:
         app: db-primary
     spec:
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-              - matchExpressions:
-                  - key: db-role
-                    operator: In
-                    values:
-                      - primary
       containers:
         - name: postgres-primary
           image: postgres:16-alpine
@@ -115,15 +106,6 @@ spec:
       labels:
         app: db-replica
     spec:
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-              - matchExpressions:
-                  - key: db-role
-                    operator: In
-                    values:
-                      - replica
       containers:
         - name: postgres-replica
           image: postgres:16-alpine
