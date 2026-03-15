@@ -57,32 +57,16 @@ spec:
             - |
               LAST5="$(echo "${POD_NAME}" | rev | cut -c1-5 | rev)"
               SERVING_HOST="Host-${LAST5}"
-              cat > /work/index.html <<EOF
-              <!doctype html>
-              <html lang="en">
-                <head>
-                  <meta charset="UTF-8" />
-                  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                  <title>Task 3 Web Server</title>
-                  <style>
-                    body { font-family: Arial, sans-serif; margin: 24px; }
-                    .card { border: 1px solid #ddd; border-radius: 8px; padding: 16px; max-width: 700px; }
-                    code { background: #f4f4f4; padding: 2px 6px; border-radius: 4px; }
-                  </style>
-                </head>
-                <body>
-                  <div class="card">
-                    <h1>Task 3 Web Server</h1>
-                    <p>pod-ip=<code>${POD_IP}</code></p>
-                    <p>serving-host=<code>${SERVING_HOST}</code></p>
-                    <p>pod-name=<code>${POD_NAME}</code></p>
-                  </div>
-                </body>
-              </html>
-              EOF
+              sed -e "s|__POD_IP__|${POD_IP}|g" \
+                  -e "s|__SERVING_HOST__|${SERVING_HOST}|g" \
+                  -e "s|__POD_NAME__|${POD_NAME}|g" \
+                  /template/index.html > /work/index.html
           volumeMounts:
             - name: web-content
               mountPath: /work
+            - name: html-template
+              mountPath: /template
+              readOnly: true
       containers:
         - name: nginx
           image: nginx:1.27-alpine
@@ -100,6 +84,9 @@ spec:
             name: task3-nginx-config
         - name: web-content
           emptyDir: {}
+        - name: html-template
+          configMap:
+            name: task3-html-template
 
 ---
 apiVersion: v1
