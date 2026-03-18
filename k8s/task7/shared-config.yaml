@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: app-secrets
-  namespace: case-study
+  namespace: case-study-task7
 type: Opaque
 stringData:
   POSTGRES_DB: appdb
@@ -17,7 +17,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: db-primary-init
-  namespace: case-study
+  namespace: case-study-task7
 data:
   01-create-replication-user.sql: |
     CREATE ROLE repl_user WITH REPLICATION LOGIN PASSWORD 'repl_pass';
