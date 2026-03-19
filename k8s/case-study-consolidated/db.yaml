@@ -1,0 +1,194 @@
+# Task 1-2: DB cluster with persistent storage
+# Task 7: Node affinity - primary on db-role=primary, replica on db-role=replica
+apiVersion: v1
+kind: Service
+metadata:
+  name: db-primary
+  namespace: case-study-consolidated
+spec:
+  selector:
+    app: db-primary
+  ports:
+    - port: 5432
+      targetPort: 5432
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: db-primary
+  namespace: case-study-consolidated
+spec:
+  serviceName: db-primary
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db-primary
+  template:
+    metadata:
+      labels:
+        app: db-primary
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: db-role
+                    operator: In
+                    values:
+                      - primary
+      containers:
+        - name: postgres-primary
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_INITDB_ARGS
+              value: "--auth-host=scram-sha-256"
+            - name: POSTGRES_HOST_AUTH_METHOD
+              value: trust
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/lib/postgresql/data
+            - name: initdb
+              mountPath: /docker-entrypoint-initdb.d
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U appuser -d appdb -h 127.0.0.1"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: initdb
+          configMap:
+            name: db-primary-init
+  volumeClaimTemplates:
+    - metadata:
+        name: pgdata
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 4Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db-replica
+  namespace: case-study-consolidated
+spec:
+  selector:
+    app: db-replica
+  ports:
+    - port: 5432
+      targetPort: 5432
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: db-replica
+  namespace: case-study-consolidated
+spec:
+  serviceName: db-replica
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db-replica
+  template:
+    metadata:
+      labels:
+        app: db-replica
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: db-role
+                    operator: In
+                    values:
+                      - replica
+      containers:
+        - name: postgres-replica
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_REPL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_REPL_USER
+            - name: POSTGRES_REPL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_REPL_PASSWORD
+          command:
+            - sh
+            - -c
+            - |
+              if [ ! -s /var/lib/postgresql/data/PG_VERSION ]; then
+                rm -rf /var/lib/postgresql/data/*
+                until pg_isready -h db-primary -p 5432 -U appuser -d appdb; do
+                  echo "waiting for primary..."
+                  sleep 2
+                done
+                export PGPASSWORD="${POSTGRES_REPL_PASSWORD}"
+                pg_basebackup -h db-primary -D /var/lib/postgresql/data -U "${POSTGRES_REPL_USER}" -vP -w
+                printf "primary_conninfo = 'host=db-primary port=5432 user=%s password=%s'\n" "${POSTGRES_REPL_USER}" "${POSTGRES_REPL_PASSWORD}" >> /var/lib/postgresql/data/postgresql.auto.conf
+                touch /var/lib/postgresql/data/standby.signal
+              fi
+              exec docker-entrypoint.sh postgres
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U appuser -d appdb -h 127.0.0.1"]
+            initialDelaySeconds: 15
+            periodSeconds: 5
+  volumeClaimTemplates:
+    - metadata:
+        name: pgdata
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 4Gi

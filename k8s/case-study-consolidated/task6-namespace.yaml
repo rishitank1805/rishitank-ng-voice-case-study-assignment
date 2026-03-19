@@ -1,0 +1,5 @@
+# Task 6: Advanced networking - secondary network
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: case-study-consolidated-q6
