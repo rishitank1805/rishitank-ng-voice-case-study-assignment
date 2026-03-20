@@ -9,6 +9,7 @@ resources:
   - networkpolicy.yaml
   - disaster-recovery.yaml
   - prometheus.yaml
+  - postgres-exporter.yaml
   - grafana.yaml
   - grafana-dashboard.yaml
   - task6-namespace.yaml

@@ -8,6 +8,7 @@ stringData:
   POSTGRES_DB: appdb
   POSTGRES_USER: appuser
   POSTGRES_PASSWORD: apppass
+  POSTGRES_DB_URL: "postgresql://appuser:apppass@db-primary:5432/appdb?sslmode=disable"
   DJANGO_SECRET_KEY: local-secret-key
   POSTGRES_REPL_USER: repl_user
   POSTGRES_REPL_PASSWORD: repl_pass

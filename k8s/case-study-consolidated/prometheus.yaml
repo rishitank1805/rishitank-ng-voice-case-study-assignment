@@ -101,6 +101,10 @@ data:
             target_label: __metrics_path__
             replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
             action: replace
+
+      - job_name: 'postgres'
+        static_configs:
+          - targets: ['postgres-exporter:9187']
 ---
 apiVersion: apps/v1
 kind: Deployment
