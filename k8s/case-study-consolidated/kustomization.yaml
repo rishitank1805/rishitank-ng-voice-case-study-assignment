@@ -8,6 +8,9 @@ resources:
   - frontend.yaml
   - networkpolicy.yaml
   - disaster-recovery.yaml
+  - prometheus.yaml
+  - grafana.yaml
+  - grafana-dashboard.yaml
   - task6-namespace.yaml
   - task6-network-attachment.yaml
   - task6-test-pods.yaml
